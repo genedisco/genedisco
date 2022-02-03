@@ -1,0 +1,7 @@
+__pycache__/
+venv/
+packrat/lib*/
+.Rprofile
+.idea/
+.DS_Store
+.pyc
