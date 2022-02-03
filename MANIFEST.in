@@ -1,1 +1,3 @@
 include requirements.txt
+include genedisco/datasets/screens/*.csv
+include genedisco/datasets/screens/*.txt

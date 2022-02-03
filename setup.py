@@ -21,7 +21,7 @@ with open('requirements.txt') as f:
 
 setup(
     name='genedisco',
-    version='1.0.0',
+    version='1.0.3',
     python_requires=">=3.8",
     packages=find_packages(),
     package_data={
@@ -35,6 +35,7 @@ setup(
     long_description=open('README.md').read(),
     long_description_content_type="text/markdown",
     install_requires=install_requires,
+    include_package_data=True,
     entry_points={
         'console_scripts': [
             'run_experiments=genedisco.apps.run_experiments_application:main',
