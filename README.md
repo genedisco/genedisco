@@ -16,7 +16,7 @@ mplementations of state-of-the-art active learning policies for experimental des
 
 ## GeneDisco ICLR-22 Challenge
 
-Learn more about the GeneDisco challenge (with a total of £20'000 of prizes) for experimental design for optimally exploring the vast genetic intervention space [here](https://www.gsk.ai/genedisco-challenge/).
+Learn more about the GeneDisco challenge for experimental design for optimally exploring the vast genetic intervention space [here](https://www.gsk.ai/genedisco-challenge/).
 
 ## Install
 
