@@ -27,8 +27,9 @@ from slingpy.data_access.data_sources.abstract_data_source import AbstractDataSo
 from genedisco.models.abstract_embedding_retrieval_model import EmbeddingRetrievalModel
 
 
-def to_device(xs):
-    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+def to_device(xs, device=None):
+    if device is None:
+        device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     return [x.to(device) for x in xs]
 
 
@@ -189,7 +190,7 @@ class PytorchMLPRegressorWithUncertainty(AbstractMetaModel, EmbeddingRetrievalMo
     def get_samples(self,
                     data: List[torch.Tensor],
                     k: Optional[int] = 1) -> List[torch.Tensor]:
-        data = to_device(data)
+        data = to_device(data, device=list(self.model.model.parameters())[0].device)
         y_samples = self.model.model(data, k)
         return y_samples
 
