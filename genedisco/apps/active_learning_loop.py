@@ -127,9 +127,6 @@ class ActiveLearningLoop(sp.AbstractBaseApplication):
     @staticmethod
     def get_if_valid_acquisition_function_file(acquisition_function_path: AnyStr):
 
-
-        import pdb; pdb.see
-
         if not os.path.exists(acquisition_function_path):
             raise ValueError("The path to the acquisition function file does not exist.")
         else:
@@ -168,7 +165,7 @@ class ActiveLearningLoop(sp.AbstractBaseApplication):
                     replace=False)
             )
         )
-        available_indices = list(set(available_indices) - set(test_indices))
+        available_indices = sorted(list(set(available_indices) - set(test_indices)))
         return dataset_x, available_indices, test_indices
 
     def load_data(self) -> Dict[AnyStr, AbstractDataSource]:
@@ -197,6 +194,7 @@ class ActiveLearningLoop(sp.AbstractBaseApplication):
                                  replace=False)
             )
         )
+
         cumulative_indices += last_selected_indices
         result_records = list()
         for cycle_index in range(self.num_active_learning_cycles):
@@ -223,9 +221,7 @@ class ActiveLearningLoop(sp.AbstractBaseApplication):
             )
             results = app.run().run_result
             result_records.append(results.test_scores)
-            available_indices = list(
-                set(available_indices) - set(last_selected_indices)
-            )
+            available_indices = sorted(list(set(available_indices) - set(last_selected_indices)))
 
             trained_model_path = results.model_path
             trained_model = app.model.load(trained_model_path)
@@ -238,7 +234,7 @@ class ActiveLearningLoop(sp.AbstractBaseApplication):
                 trained_model
             )
             cumulative_indices.extend(last_selected_indices)
-            cumulative_indices = list(set(cumulative_indices))
+            cumulative_indices = sorted(list(set(cumulative_indices)))
             assert len(last_selected_indices) == self.acquisition_batch_size
 
         results_path = os.path.join(self.output_directory, "results.pickle")
