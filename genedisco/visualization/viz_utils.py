@@ -46,7 +46,7 @@ def plot_acq(df,acq_name,color):
     
     plt.xlabel('cycles')
     plt.ylabel('metric')
-    plt.title(f'Mean and stderr over cycles for {acq_name} acquisition functin')
+    plt.title(f'Mean and stderr over cycles for {acq_name} acquisition function')
 
     subplot.plot([0,1,2,3,4,5,6,7],
                         means,
@@ -79,4 +79,3 @@ acq_dfs=get_acq_dfs(df)
 colors=['red','greenyellow','violet','cyan','yellow','blue','magenta','lime','gold']
 for i in range(len(acq_dfs)):
     plot_acq(acq_dfs[i],df.index[i],colors[i])
-    
