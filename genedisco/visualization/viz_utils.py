@@ -10,11 +10,9 @@ def get_results(data, features, metric):
     results = defaultdict(list)
     for ack in glob.glob(data + '/' + features + '/*'):
         _ack = ack.replace(data + '/' + features + '/', '')
-        _ack =_ack=_ack.split('\\')[-1]
         results[_ack] = defaultdict(list)
         for seed in glob.glob(ack + '/*'):
             _seed = seed.replace(ack + '/', '')
-            _seed = _seed.split('\\')[-1]
             print(_ack, _seed)
             d = pd.read_pickle(seed + '/results.pickle')
             for cycle in range(len(d)):
