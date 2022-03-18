@@ -27,6 +27,12 @@ from slingpy.data_access.data_sources.abstract_data_source import AbstractDataSo
 from genedisco.models.abstract_embedding_retrieval_model import EmbeddingRetrievalModel
 
 
+def to_device(xs, device=None):
+    if device is None:
+        device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+    return [x.to(device) for x in xs]
+
+
 class SklearnRandomForestRegressor(AbstractMetaModel, SklearnModel):
     """The random forest regressor model from sklean (non-deep models)"""
     def __init__(self,
@@ -38,7 +44,7 @@ class SklearnRandomForestRegressor(AbstractMetaModel, SklearnModel):
         output uncertainty along with the average prediction.
 
         Args:
-            base_module: The base forest ensemble module. It can be from 
+            base_module: The base forest ensemble module. It can be from
             {RandomForestRegressor, ExtraTreesRegressor}
         """
 
@@ -58,7 +64,7 @@ class SklearnRandomForestRegressor(AbstractMetaModel, SklearnModel):
         file_path = os.path.join(save_folder_path, "model.pickle")
         model = PickleableBaseModel.load(file_path)
         return model
-    
+
     def get_samples(self, x: np.ndarray, k: Optional[int] = 1):
         k = self.n_estimators or k
         if k > self.n_estimators:
@@ -66,7 +72,7 @@ class SklearnRandomForestRegressor(AbstractMetaModel, SklearnModel):
                              " the number of estimators in ensemble models.")
         else:
             random_indices = np.random.randint(self.n_estimators, size=k)
-            y_samples = [self.model.estimators_[i].predict(x) 
+            y_samples = [self.model.estimators_[i].predict(x)
                          for i in random_indices]
             y_samples = np.swapaxes(y_samples, 0, 1)
         return y_samples
@@ -87,7 +93,7 @@ class SklearnRandomForestRegressor(AbstractMetaModel, SklearnModel):
             return y_pred
 
     def predict(self,
-                dataset_x: AbstractDataSource, 
+                dataset_x: AbstractDataSource,
                 batch_size: int = 256,
                 return_std_and_margin: bool = False) -> List[np.ndarray]:
         """
@@ -95,7 +101,7 @@ class SklearnRandomForestRegressor(AbstractMetaModel, SklearnModel):
             dataset_x: Input dataset to be evaluated.
             batch_size:
             return_std_and_margin: If True, return the epistemic uncertainty of the output.
-        
+
         Returns: If return_std_and_margin is True, returns ([output_means], [output_stds]).
                         Otherwise, returns [output_means]
         """
@@ -155,11 +161,16 @@ class PytorchMLPRegressorWithUncertainty(AbstractMetaModel, EmbeddingRetrievalMo
         self.num_target_samples = num_target_samples
         self.model = model
 
-    def fit(self, 
-            train_x: AbstractDataSource, 
+        if self.model:
+            self.model.preprocess_x_fn = to_device
+            self.model.preprocess_y_fn = to_device
+
+    def fit(self,
+            train_x: AbstractDataSource,
             train_y: Optional[AbstractDataSource] = None,
             validation_set_x: Optional[AbstractDataSource] = None,
             validation_set_y: Optional[AbstractDataSource] = None) -> AbstractBaseModel:
+
         return self.model.fit(train_x, train_y, validation_set_x, validation_set_y)
 
     def get_model_prediction(self,
@@ -176,9 +187,10 @@ class PytorchMLPRegressorWithUncertainty(AbstractMetaModel, EmbeddingRetrievalMo
             y_preds = self.get_samples(data, 1)
         return y_preds
 
-    def get_samples(self, 
-                    data: List[torch.Tensor], 
+    def get_samples(self,
+                    data: List[torch.Tensor],
                     k: Optional[int] = 1) -> List[torch.Tensor]:
+        data = to_device(data, device=list(self.model.model.parameters())[0].device)
         y_samples = self.model.model(data, k)
         return y_samples
 
@@ -190,7 +202,7 @@ class PytorchMLPRegressorWithUncertainty(AbstractMetaModel, EmbeddingRetrievalMo
         """
         Args:
             return_std_and_margin: If True, return the epistemic uncertainty of the output.
-        
+
         Returns: If return_std is True, returns ([output_means], [output_stds]).
                         Otherwise, returns [output_means]
         """
@@ -210,9 +222,9 @@ class PytorchMLPRegressorWithUncertainty(AbstractMetaModel, EmbeddingRetrievalMo
             else:
                 y_pred = self.get_model_prediction(data, return_multiple_preds=False)
                 y_preds.append(y_pred)
-        
+
         y_preds = list(
-            map(lambda y_preds_i: torch.cat(y_preds_i, dim=0).detach().numpy(), 
+            map(lambda y_preds_i: torch.cat(y_preds_i, dim=0).cpu().detach().numpy(),
                 zip(*y_preds))
         )
         y_preds = np.squeeze(y_preds)
