@@ -112,23 +112,6 @@ class RandomBatchAcquisitionFunction(BaseBatchAcquisitionFunction):
 ```
 Note that the last class implementing `BaseBatchAcquisitionFunction` is loaded by GeneDisco if there are multiple valid acquisition functions present in the loaded file.
 
-
-### Frequently Asked Questions (FAQ)
-
-#### _"Will there be a public challenge leaderboard?"_
-
-No. Participants are asked to compare their solutions internally against the provided baselines in the `genedisco` repository.
-A final private leaderboard will be created using the submissions received via eval.ai after the challenge submission period is closed.
-
-#### _"Which specific parts of the whole app lifecycle are we allowed to change?"_
-
-You are able to change the acquisition function only (please see instructions above). We have chosen to fix the predictor and other aspects of the active learning loop in order to enable comparability of the developed solutions (there is a complex dependency between model, acquisition function and data).
-
-#### _"How will submissions be scored?"_
-
-We will score submissions against the two subtasks using the metrics calculated in `genedisco` - overall hit rate (% of top movers discovered) and model performance (model error) at the end of the active learning loop (after the last cycle).
-Note that we will score the solutions against a held-out set of tasks not known to the participants via `genedisco`.
-
 ## Citation
 
 Please consider citing, if you reference or use our methodology, code or results in your work:
