@@ -23,6 +23,8 @@ import importlib.util
 from slingpy.utils.path_tools import PathTools
 from typing import AnyStr, Dict, List, Optional
 from slingpy import AbstractMetric, AbstractBaseModel, AbstractDataSource
+from genedisco.evaluation.evaluator import save_top_movers
+from genedisco.evaluation.evaluator import Evaluator as Evaluator_HitRatio
 from genedisco.active_learning_methods.acquisition_functions.kmeans import Kmeans
 from genedisco.active_learning_methods.acquisition_functions.core_set import CoreSet
 from genedisco.apps.single_cycle_application import SingleCycleApplication, CustomLoss
@@ -56,7 +58,7 @@ class ActiveLearningLoop(sp.AbstractBaseApplication):
         cache_directory: AnyStr = "",
         output_directory: AnyStr = "",
         test_ratio: float = 0.2,
-        hyperopt_children: bool = True,
+        hyperopt_children: bool = False,
         schedule_on_slurm: bool = False,
         schedule_children_on_slurm: bool = False,
         remote_execution_time_limit_days: int = 1,
@@ -94,6 +96,25 @@ class ActiveLearningLoop(sp.AbstractBaseApplication):
             remote_execution_mem_limit_in_mb=remote_execution_mem_limit_in_mb,
             remote_execution_virtualenv_path=remote_execution_virtualenv_path
         )
+        
+        self.top_movers_filepath = self.prepare_hitratio_evaluation(top_ratio_threshold=0.05)
+        
+    def prepare_hitratio_evaluation(self, top_ratio_threshold=0.05):
+        """Save the top mover genes before AL loop starts to compute the HitRatio metric in next cycles.
+        """
+        dir_to_save = os.path.join(self.output_directory, "hitratio_artefacts")
+        full_path_to_save = save_top_movers(
+            top_ratio_threshold=top_ratio_threshold,
+            feature_set_name=self.feature_set_name,
+            dataset_name=self.dataset_name,
+            cache_directory=self.cache_directory,
+            test_ratio=self.test_ratio,
+            seed=self.seed,
+            dir_to_save=dir_to_save
+            )
+        return full_path_to_save
+        
+    
     
     @staticmethod
     def get_acquisition_function(
@@ -215,6 +236,8 @@ class ActiveLearningLoop(sp.AbstractBaseApplication):
                 hyperopt=self.hyperopt_children,
                 selected_indices_file_path=cumulative_indices_file_path,
                 test_indices_file_path=test_indices_file_path,
+                top_movers_filepath=self.top_movers_filepath,
+                super_dir_to_cycle_dirs=self.output_directory,
                 **single_cycle_application_args
             )
             results = app.run().run_result
