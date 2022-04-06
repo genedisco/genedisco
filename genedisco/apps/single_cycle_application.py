@@ -17,12 +17,17 @@ import torch
 import pickle
 import slingpy as sp
 from slingpy.models import torch_model
-from genedisco.models import meta_models
-from genedisco.models import pytorch_models
+from slingpy.evaluation.evaluator import Evaluator
 from sklearn.ensemble import RandomForestRegressor
+from slingpy.models.abstract_base_model import AbstractBaseModel
+from slingpy.data_access.data_sources.abstract_data_source import AbstractDataSource
+from genedisco.models import meta_models
+from genedisco.evaluation import hitratio
+from genedisco.models import pytorch_models
 from genedisco.datasets.features.achilles import Achilles
 from typing import Any, AnyStr, Dict, List, Tuple, Union, Optional
 from genedisco.datasets.features.string_embedding import STRINGEmbedding
+from genedisco.evaluation.evaluator import Evaluator as Evaluator_HitRatio
 from genedisco.datasets.screens.zhuang_2019_nk_cancer import Zhuang2019NKCancer
 from genedisco.datasets.screens.schmidt_2021_t_cells_il2 import Schmidt2021TCellsIL2
 from genedisco.datasets.screens.sanchez_2021_neurons_tau import Sanchez2021NeuronsTau
@@ -93,6 +98,8 @@ class SingleCycleApplication(sp.AbstractBaseApplication):
         rf_num_estimators: int = 100,  # ensemble_model_hyperparms
         dn_num_layers: int = 2,  # deep net hyperparams
         dn_hidden_layer_size: int = 16,  # deep net hyperparams
+        top_movers_filepath: Optional[AnyStr] = None,
+        super_dir_to_cycle_dirs: Optional[AnyStr] = None,
         seed: int = 0
     ):
         model_hyperparams = {
@@ -117,6 +124,8 @@ class SingleCycleApplication(sp.AbstractBaseApplication):
         self.hyperopt_metric_name = hyperopt_metric_name
         self.seed = seed
         self.model = self.get_model(model_name, **model_hyperparams)
+        self.top_movers_filepath = top_movers_filepath
+        self.super_dir_to_cycle_dirs = super_dir_to_cycle_dirs
 
         with open(self.test_indices_file_path, "rb") as fp:
             self.test_indices = pickle.load(fp)
@@ -148,8 +157,47 @@ class SingleCycleApplication(sp.AbstractBaseApplication):
             sp.metrics.MeanAbsoluteError(),
             sp.metrics.RootMeanSquaredError(),
             sp.metrics.SymmetricMeanAbsolutePercentageError(),
-            sp.metrics.SpearmanRho()
+            sp.metrics.SpearmanRho(),
+            hitratio.HitRatio()
         ]
+    
+    def evaluate_model(self, model: AbstractBaseModel, dataset_x: AbstractDataSource, dataset_y: AbstractDataSource,
+                       with_print: bool = True, set_name: AnyStr = "", threshold=None) \
+            -> Dict[AnyStr, Union[float, List[float]]]:
+        """
+        Evaluates model performance.
+        Because of the HitRatio metric does not follow the same pattern of the supervised learning evaluation
+        implemented by Slingpy, The evaluate_method of the AbstractBaseApplication is overridden here so that
+        the HitRatio metric uses a different customized Evaluator that is implemented at GeneDisco level.
+
+        Args:
+            model: The model to evaluate.
+            dataset: The dataset used for evaluation.
+            with_print: Whether or not to print results to stdout.
+            set_name: The name of the dataset being evaluated.
+            threshold: An evaluation threshold (derived in sample) for discrete classification metrics,
+             or none if a threshold should automatically be selected.
+
+        Returns:
+            A dictionary with each entry corresponding to an evaluation metric with one or more associated values.
+        """
+        all_metrics = self.get_metrics("Test set")
+        all_metric_names = [metric.__class__.__name__ for metric in all_metrics]
+        if "HitRatio" in all_metric_names:
+            hitratio_metric_dic = Evaluator_HitRatio.evaluate(
+                top_movers_filepath=self.top_movers_filepath,
+                super_dir_to_cycle_dirs=self.super_dir_to_cycle_dirs,
+                metrics=[metric for metric in all_metrics if metric.__class__.__name__ == "HitRatio"],
+            )
+            all_metrics_except_hitratio = [metric for metric in all_metrics if metric.__class__.__name__ != "HitRatio"]
+            other_metrics_dic = Evaluator.evaluate(model, dataset_x, dataset_y, all_metrics_except_hitratio,
+                                  with_print=with_print, set_name=set_name, threshold=threshold)
+            all_metrics_dic = {**hitratio_metric_dic, **other_metrics_dic}
+        else:
+            all_metrics_dic = Evaluator.evaluate(model, dataset_x, dataset_y, all_metrics,
+                                  with_print=with_print, set_name=set_name, threshold=threshold)
+
+        return all_metrics_dic
 
     @staticmethod
     def get_dataset_y(dataset_name, cache_directory):
