@@ -89,6 +89,7 @@ class SingleCycleApplication(sp.AbstractBaseApplication):
         selected_indices_file_path: AnyStr = "",
         test_indices_file_path: AnyStr = "",
         train_ratio: float = 0.8,
+        single_run: bool = True,
         hyperopt: bool = False,
         num_hyperopt_runs: int = 15,
         hyperopt_offset: int = 0,
@@ -144,6 +145,7 @@ class SingleCycleApplication(sp.AbstractBaseApplication):
             save_predictions=False,
             save_predictions_file_format="tsv",
             hyperopt=hyperopt,
+            single_run=single_run,
             num_hyperopt_runs=num_hyperopt_runs,
             seed=seed,
             remote_execution_time_limit_days=remote_execution_time_limit_days,
@@ -261,18 +263,18 @@ class SingleCycleApplication(sp.AbstractBaseApplication):
             "test_set_y": dataset_y.subset(self.test_indices)
         }
 
-    def get_model(self, model_name, **kwargs):
-        if model_name == "randomforest":
-            rf_max_depth = kwargs["rf_max_depth"]
+    def get_model(self) -> sp.AbstractBaseModel:
+        if self.model_name == "randomforest":
+            rf_max_depth = self.model_hyperparams["rf_max_depth"]
             if rf_max_depth == -1:
                 rf_max_depth = None
             sp_model = SklearnRandomForestRegressor(
                 base_module=RandomForestRegressor(
-                    n_estimators=kwargs["rf_num_estimators"],
+                    n_estimators=self.model_hyperparams["rf_num_estimators"],
                     max_depth=rf_max_depth,
                     random_state=self.seed)
             )
-        elif model_name == "bayesian_mlp":
+        elif self.model_name == "bayesian_mlp":
             super_base_module = torch_model.TorchModel(
                 base_module=pytorch_models.BayesianMLP(
                     input_size=SingleCycleApplication.get_dataset_x(self.feature_set_name,
@@ -287,13 +289,15 @@ class SingleCycleApplication(sp.AbstractBaseApplication):
                 num_target_samples=100
             )
         else:
-            raise NotImplementedError(f"{model_name} does not exist.")
+            raise NotImplementedError(f"{self.model_name} does not exist.")
+        self.model = sp_model
         return sp_model
 
-    def train_model(self) -> Optional[sp.AbstractBaseModel]:
-        self.model.fit(self.datasets.training_set_x,
-                       self.datasets.training_set_y)
-        return self.model
+    def train_model(self, model: sp.AbstractBaseModel) -> Optional[sp.AbstractBaseModel]:
+        model.fit(self.datasets.training_set_x,
+                  self.datasets.training_set_y)
+        self.model = model
+        return model
 
     def get_hyperopt_parameter_ranges(self) -> Dict[AnyStr, Union[List, Tuple]]:
         """
@@ -317,7 +321,7 @@ class SingleCycleApplication(sp.AbstractBaseApplication):
             (represented as a Tuple) or continuous (represented as a List[start, end]) value range.
         """
         prefixes = {"randomforest": "rf_", "bayesian_mlp": "dn_"}
-        model_hyperopt_parameter_ranges = self.model.get_hyperopt_parameter_ranges()
+        model_hyperopt_parameter_ranges = self.get_model().get_hyperopt_parameter_ranges()
         model_hyperopt_parameter_ranges = update_dictionary_keys_with_prefixes(
             model_hyperopt_parameter_ranges, prefixes[self.model_name]
         )

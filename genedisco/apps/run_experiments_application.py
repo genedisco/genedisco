@@ -33,6 +33,7 @@ class RunExperimentsApplication(sp.AbstractBaseApplication):
                  acquisition_function_path: AnyStr = None,
                  max_num_jobs: int = 90,
                  seed: int = 909,
+                 single_run: bool = True,
                  hyperopt_children: bool = True,
                  num_random_seeds: int = 5,
                  num_active_learning_cycles: int = 20,
@@ -56,7 +57,7 @@ class RunExperimentsApplication(sp.AbstractBaseApplication):
             output_directory=output_directory,
             evaluate=False,
             hyperopt=False,
-            single_run=True,
+            single_run=single_run,
             save_predictions=False,
             seed=seed,
             schedule_on_slurm=schedule_on_slurm,
@@ -95,7 +96,10 @@ class RunExperimentsApplication(sp.AbstractBaseApplication):
         app.run()
         return None
 
-    def train_model(self) -> Optional[AbstractBaseModel]:
+    def get_model(self) -> sp.AbstractBaseModel:
+        return None
+
+    def train_model(self, model: sp.AbstractBaseModel) -> Optional[sp.AbstractBaseModel]:
         acqfunc_path = self.acquisition_function_path
         random_state = np.random.RandomState(self.seed)
         baselines = ActiveLearningLoop.ACQUISITION_FUNCTIONS

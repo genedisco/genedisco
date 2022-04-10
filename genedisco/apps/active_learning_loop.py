@@ -58,6 +58,7 @@ class ActiveLearningLoop(sp.AbstractBaseApplication):
         cache_directory: AnyStr = "",
         output_directory: AnyStr = "",
         test_ratio: float = 0.2,
+        single_run: bool = True,
         hyperopt_children: bool = False,
         schedule_on_slurm: bool = False,
         schedule_children_on_slurm: bool = False,
@@ -88,7 +89,7 @@ class ActiveLearningLoop(sp.AbstractBaseApplication):
             seed=seed,
             evaluate=False,
             hyperopt=False,
-            single_run=True,
+            single_run=single_run,
             save_predictions=False,
             schedule_on_slurm=schedule_on_slurm,
             remote_execution_num_cpus=remote_execution_num_cpus,
@@ -194,7 +195,10 @@ class ActiveLearningLoop(sp.AbstractBaseApplication):
     def get_metrics(self, set_name: AnyStr) -> List[AbstractMetric]:
         return []
 
-    def train_model(self) -> Optional[AbstractBaseModel]:
+    def get_model(self) -> sp.AbstractBaseModel:
+        return None
+
+    def train_model(self, model: sp.AbstractBaseModel) -> Optional[sp.AbstractBaseModel]:
         single_cycle_application_args = {
             "model_name": self.model_name,
             "seed": self.seed,
