@@ -89,28 +89,30 @@ class SklearnRandomForestRegressor(AbstractMetaModel, SklearnModel):
     def predict(self,
                 dataset_x: AbstractDataSource, 
                 batch_size: int = 256,
-                return_std_and_margin: bool = False) -> List[np.ndarray]:
+                return_std_and_margin: bool = False,
+                row_names: List[AnyStr] = None) -> List[np.ndarray]:
         """
         Args:
             dataset_x: Input dataset to be evaluated.
             batch_size:
             return_std_and_margin: If True, return the epistemic uncertainty of the output.
-        
+
         Returns: If return_std_and_margin is True, returns ([output_means], [output_stds]).
                         Otherwise, returns [output_means]
         """
         if self.model is None:
             self.model = self.build()
 
-        available_indices = dataset_x.get_row_names()
+        if row_names is None:
+            row_names = dataset_x.get_row_names()
         if return_std_and_margin:
             all_ids, y_preds, y_stds, y_trues, y_margins = [], [], [], [], []
         else:
             all_ids, y_preds, y_trues = [], [], []
 
-        while len(available_indices) > 0:
-            current_indices = available_indices[:batch_size]
-            available_indices = available_indices[batch_size:]
+        while len(row_names) > 0:
+            current_indices = row_names[:batch_size]
+            row_names = row_names[batch_size:]
 
             data = self.merge_strategy_x.resolve(
                 dataset_x.subset(list(current_indices)).get_data())[0]
@@ -155,8 +157,8 @@ class PytorchMLPRegressorWithUncertainty(AbstractMetaModel, EmbeddingRetrievalMo
         self.num_target_samples = num_target_samples
         self.model = model
 
-    def fit(self, 
-            train_x: AbstractDataSource, 
+    def fit(self,
+            train_x: AbstractDataSource,
             train_y: Optional[AbstractDataSource] = None,
             validation_set_x: Optional[AbstractDataSource] = None,
             validation_set_y: Optional[AbstractDataSource] = None) -> AbstractBaseModel:
@@ -176,8 +178,8 @@ class PytorchMLPRegressorWithUncertainty(AbstractMetaModel, EmbeddingRetrievalMo
             y_preds = self.get_samples(data, 1)
         return y_preds
 
-    def get_samples(self, 
-                    data: List[torch.Tensor], 
+    def get_samples(self,
+                    data: List[torch.Tensor],
                     k: Optional[int] = 1) -> List[torch.Tensor]:
         y_samples = self.model.model(data, k)
         return y_samples
@@ -186,22 +188,24 @@ class PytorchMLPRegressorWithUncertainty(AbstractMetaModel, EmbeddingRetrievalMo
                 dataset_x: AbstractDataSource,
                 batch_size: int = 256,
                 return_std_and_margin: bool = False,
-                return_multiple_preds: bool = False) -> List[np.ndarray]:
+                return_multiple_preds: bool = False,
+                row_names: List[AnyStr] = None) -> List[np.ndarray]:
         """
         Args:
             return_std_and_margin: If True, return the epistemic uncertainty of the output.
-        
+
         Returns: If return_std is True, returns ([output_means], [output_stds]).
                         Otherwise, returns [output_means]
         """
-        available_indices = dataset_x.get_row_names()
+        if row_names is None:
+            row_names = dataset_x.get_row_names()
         if return_std_and_margin:
             all_ids, y_preds, y_stds, y_trues = [], [], [], []
         else:
             all_ids, y_preds, y_trues = [], [], []
-        while len(available_indices) > 0:
-            current_indices = available_indices[:batch_size]
-            available_indices = available_indices[batch_size:]
+        while len(row_names) > 0:
+            current_indices = row_names[:batch_size]
+            row_names = row_names[batch_size:]
 
             data = dataset_x.subset(list(current_indices))
             if return_std_and_margin:

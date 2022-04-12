@@ -99,16 +99,17 @@ class SingleCycleApplication(sp.AbstractBaseApplication):
         rf_num_estimators: int = 100,  # ensemble_model_hyperparms
         dn_num_layers: int = 2,  # deep net hyperparams
         dn_hidden_layer_size: int = 16,  # deep net hyperparams
-        top_movers_filepath: Optional[AnyStr] = None,
-        super_dir_to_cycle_dirs: Optional[AnyStr] = None,
+        top_movers_filepath: AnyStr = "",
+        super_dir_to_cycle_dirs: AnyStr = "",
         seed: int = 0
     ):
-        model_hyperparams = {
+        self.model_hyperparams = {
             "rf_max_depth": rf_max_depth,
             "rf_num_estimators": rf_num_estimators,
             "dn_num_layers": dn_num_layers,
             "dn_hidden_layer_size": dn_hidden_layer_size,
         }
+        self.model = None
         self.rf_max_depth = rf_max_depth
         self.rf_num_estimators = rf_num_estimators
         self.dn_num_layers = dn_num_layers
@@ -124,7 +125,6 @@ class SingleCycleApplication(sp.AbstractBaseApplication):
         self.hyperopt_offset = hyperopt_offset
         self.hyperopt_metric_name = hyperopt_metric_name
         self.seed = seed
-        self.model = self.get_model(model_name, **model_hyperparams)
         self.top_movers_filepath = top_movers_filepath
         self.super_dir_to_cycle_dirs = super_dir_to_cycle_dirs
 

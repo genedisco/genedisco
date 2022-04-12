@@ -251,7 +251,7 @@ class ActiveLearningLoop(sp.AbstractBaseApplication):
             )
 
             trained_model_path = results.model_path
-            trained_model = app.model.load(trained_model_path)
+            trained_model = app.get_model().load(trained_model_path)
 
             last_selected_indices = self.acquisition_function(
                 dataset_x,
