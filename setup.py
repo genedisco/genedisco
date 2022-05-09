@@ -21,7 +21,7 @@ with open('requirements.txt') as f:
 
 setup(
     name='genedisco',
-    version='1.0.3',
+    version='1.0.4',
     python_requires=">=3.8",
     packages=find_packages(),
     package_data={
