@@ -30,7 +30,7 @@ setup(
     },
     author='see README.txt',
     url="https://gsk.ai/genedisco-challenge/",
-    author_email='patrick.x.schwab@gsk.com',
+    author_email='biomedical-ai-external@gsk.com',
     license="Apache-2.0",
     long_description=open('README.md').read(),
     long_description_content_type="text/markdown",
