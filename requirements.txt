@@ -13,4 +13,4 @@ tqdm>=4.62.1
 xxhash>=2.0.0
 requests>=2.26.0
 seaborn>=0.11.2
-slingpy==0.1.0
+slingpy==0.2.11
