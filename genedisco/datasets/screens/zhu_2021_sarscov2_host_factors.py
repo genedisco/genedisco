@@ -40,7 +40,7 @@ class Zhu2021SARSCoV2HostFactors(object):
             df = pd.read_csv(csv_file_path, sep=",", index_col="id")
 
             gene_names, data = df.index.values.tolist(), -np.log(df[['pos|score']].values.astype(np.float32))
-            gene_names, idx_start = np.unique(sorted(gene_names), return_index=True)
+            gene_names, idx_start = np.unique(gene_names, return_index=True)
             data = data[idx_start]
 
             HDF5Tools.save_h5_file(h5_file,

@@ -54,7 +54,7 @@ class Schmidt2021TCellsIL2(object):
 
             name_converter = HGNCNames(save_directory)
             gene_names = name_converter.update_outdated_gene_names(gene_names)
-            gene_names, idx_start = np.unique(sorted(gene_names), return_index=True)
+            gene_names, idx_start = np.unique(gene_names, return_index=True)
             data = data[idx_start]
 
             HDF5Tools.save_h5_file(h5_file,
