@@ -137,3 +137,5 @@ Ashkan Soleymani, MIT
 ### Acknowledgements
 
 PS and AM are employees and shareholders of GlaxoSmithKline plc.
+
+https://github.com/BlackHC/batchbald_redux contributed code for ConsistentMCDropout.
