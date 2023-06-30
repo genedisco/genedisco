@@ -1,5 +1,5 @@
 """
-Copyright 2021 Patrick Schwab, Arash Mehrjou, GlaxoSmithKline plc; Andrew Jesson, University of Oxford; Ashkan Soleymani, MIT
+Copyright 2021 Patrick Schwab, Arash Mehrjou, Yusuf Roohani, GlaxoSmithKline plc; Andrew Jesson, University of Oxford; Ashkan Soleymani, MIT
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -50,12 +50,15 @@ class Schmidt2021TCellsIFNg(object):
             group_by_row_index = df.groupby(df.index)
             df = group_by_row_index.mean()
 
-            gene_names, data = df.index.values.tolist(), df[['pos|lfc']].values.astype(np.float32)
+            gene_names = df.index.values.tolist()
 
             name_converter = HGNCNames(save_directory)
             gene_names = name_converter.update_outdated_gene_names(gene_names)
-            gene_names, idx_start = np.unique(gene_names, return_index=True)
-            data = data[idx_start]
+            df.index = gene_names
+
+            # Merge duplicate indices by averaging
+            df = df.groupby(df.index).mean()
+            gene_names, data = df.index.values.tolist(), df[['pos|lfc']].values.astype(np.float32)
 
             HDF5Tools.save_h5_file(h5_file,
                                    data,
