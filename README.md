@@ -1,6 +1,6 @@
 # GeneDisco: A benchmark for active learning in drug discovery
 
-![Python version](https://img.shields.io/badge/Python-3.8-blue)
+![Python version](https://img.shields.io/badge/Python-%3E%3D3.8-blue)
 ![Library version](https://img.shields.io/badge/Version-1.0.5-blue)
 
 In vitro cellular experimentation with genetic interventions, using for example CRISPR technologies, is an essential 

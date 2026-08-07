@@ -23,6 +23,17 @@ from genedisco.active_learning_methods.acquisition_functions.base_acquisition_fu
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 
+def _get_model_device(last_model):
+    # Checkpoint reset can move the model back to CPU, so read the device off its
+    # parameters rather than assuming `device`.
+    module = getattr(last_model, "model", last_model)
+    module = getattr(module, "model", module)
+    try:
+        return next(module.parameters()).device
+    except (AttributeError, StopIteration):
+        return device
+
+
 class AdversarialBIM(BaseBatchAcquisitionFunction):
     def __init__(self, args=None):
         if args is None:
@@ -60,8 +71,10 @@ class AdversarialBIM(BaseBatchAcquisitionFunction):
         dis = np.zeros(len(available_indices)) + np.inf
         data_pool = dataset_x.subset(available_indices)
 
+        model_device = _get_model_device(last_model)
+
         for i, index in enumerate(available_indices[:100]):
-            x = torch.as_tensor(data_pool.subset([index]).get_data()).to(device)
+            x = torch.as_tensor(data_pool.subset([index]).get_data()).to(model_device)
             dis[i] = self.cal_dis(x, last_model)
 
         chosen = dis.argsort()[:batch_size]
@@ -74,7 +87,7 @@ class AdversarialBIM(BaseBatchAcquisitionFunction):
         first_x = torch.clone(nx)
 
         nx.requires_grad_()
-        eta = torch.zeros(nx.shape).to(device)
+        eta = torch.zeros(nx.shape).to(nx.device)
         iteration = 0
 
         while torch.linalg.norm(nx + eta - first_x) < self.gamma * torch.linalg.norm(first_x):

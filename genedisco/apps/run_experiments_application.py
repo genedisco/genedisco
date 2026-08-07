@@ -38,6 +38,8 @@ class RunExperimentsApplication(sp.AbstractBaseApplication):
                  num_random_seeds: int = 5,
                  num_active_learning_cycles: int = 20,
                  acquisition_batch_size: int = 256,
+                 dataset_names: AnyStr = "",
+                 feature_set_names: AnyStr = "",
                  schedule_on_slurm: bool = False,
                  schedule_children_on_slurm: bool = False,
                  remote_execution_time_limit_days: int = 5,
@@ -53,6 +55,10 @@ class RunExperimentsApplication(sp.AbstractBaseApplication):
         self.num_random_seeds = num_random_seeds
         self.num_active_learning_cycles = num_active_learning_cycles
         self.acquisition_batch_size = acquisition_batch_size
+        # Comma-separated subsets to sweep. Empty == default (all datasets except
+        # shifrut_2018, all feature sets), preserving prior behavior.
+        self.dataset_names = dataset_names
+        self.feature_set_names = feature_set_names
         super(RunExperimentsApplication, self).__init__(
             output_directory=output_directory,
             evaluate=False,
@@ -99,13 +105,47 @@ class RunExperimentsApplication(sp.AbstractBaseApplication):
     def get_model(self) -> sp.AbstractBaseModel:
         return None
 
+    @staticmethod
+    def _parse_name_selection(raw, valid_names, default_names, kind):
+        """Parse a comma-separated CLI selection against valid_names.
+
+        Empty/blank falls back to default_names; unknown names raise ValueError.
+        Order is preserved and duplicates dropped.
+        """
+        if raw is None or str(raw).strip() == "":
+            return list(default_names)
+        requested = [n.strip() for n in str(raw).split(",") if n.strip()]
+        unknown = [n for n in requested if n not in valid_names]
+        if unknown:
+            raise ValueError(
+                f"Unknown {kind}(s): {unknown}. Valid options are: {list(valid_names)}."
+            )
+        seen = set()
+        return [n for n in requested if not (n in seen or seen.add(n))]
+
     def train_model(self, model: sp.AbstractBaseModel) -> Optional[sp.AbstractBaseModel]:
         acqfunc_path = self.acquisition_function_path
         random_state = np.random.RandomState(self.seed)
-        baselines = ActiveLearningLoop.ACQUISITION_FUNCTIONS
+        baselines = list(ActiveLearningLoop.ACQUISITION_FUNCTIONS)
+        # "custom" needs an acquisition function file; drop it unless a valid
+        # --acquisition_function_path was given, else it hits os.path.exists(None).
+        if not (acqfunc_path and os.path.exists(acqfunc_path)):
+            baselines = [b for b in baselines if b != "custom"]
         random_seeds = random_state.randint(2**31, size=self.num_random_seeds)
-        datasets = SingleCycleApplication.DATASET_NAMES[1:]  # Excluding Shifrut et al.
-        feature_sets = SingleCycleApplication.FEATURE_SET_NAMES
+        # Default datasets exclude shifrut_2018 (index 0); it can still be selected
+        # explicitly via --dataset_names. Feature sets default to all.
+        datasets = RunExperimentsApplication._parse_name_selection(
+            self.dataset_names,
+            SingleCycleApplication.DATASET_NAMES,
+            SingleCycleApplication.DATASET_NAMES[1:],
+            "dataset",
+        )
+        feature_sets = RunExperimentsApplication._parse_name_selection(
+            self.feature_set_names,
+            SingleCycleApplication.FEATURE_SET_NAMES,
+            SingleCycleApplication.FEATURE_SET_NAMES,
+            "feature set",
+        )
 
         arg_list = []
         for dataset in datasets:

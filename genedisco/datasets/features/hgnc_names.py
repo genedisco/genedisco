@@ -22,8 +22,9 @@ from slingpy.utils.logging import warn
 
 
 class HGNCNames(object):
-    FILE_URL = "http://ftp.ebi.ac.uk/pub/databases/genenames/hgnc/tsv/locus_types/gene_with_protein_product.txt"
-
+    # OLD FILE_URL = "http://ftp.ebi.ac.uk/pub/databases/genenames/hgnc/tsv/locus_types/gene_with_protein_product.txt"
+    FILE_URL = "https://storage.googleapis.com/public-download-files/hgnc/tsv/tsv/locus_types/gene_with_protein_product.txt"
+    
     def __init__(self, cache_directory: AnyStr):
         self.hgnc_mappings = {}
         self.cache_directory = cache_directory
@@ -36,7 +37,9 @@ class HGNCNames(object):
 
     def get_gene_names(self, index_name: AnyStr = "symbol"):
         tsv_file = self.get_hgnc_master_file()
-        data = pd.read_csv(tsv_file, sep="\t", index_col=index_name)
+        
+        # low_memory=False to better handle mixed typed columns in updated HGNC tsv file
+        data = pd.read_csv(tsv_file, sep="\t", index_col=index_name, low_memory=False)
         gene_names = data.index.values.tolist()
         return gene_names
 
@@ -45,7 +48,7 @@ class HGNCNames(object):
         cache_entry_name = f"{from_id}${to_id}"
         if cache_entry_name not in self.hgnc_mappings:
             tsv_file = self.get_hgnc_master_file()
-            mapping_data = pd.read_csv(tsv_file, sep="\t", index_col=from_id)
+            mapping_data = pd.read_csv(tsv_file, sep="\t", index_col=from_id, low_memory=False) # see comment line 41
             target_column_index = mapping_data.columns.values.tolist().index(to_id)
             mapping_row_names = mapping_data.index.values
             mapping_data = mapping_data.values[:, target_column_index]

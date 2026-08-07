@@ -39,7 +39,8 @@ setup(
     entry_points={
         'console_scripts': [
             'run_experiments=genedisco.apps.run_experiments_application:main',
-            'active_learning_loop=genedisco.apps.active_learning_loop:main'
+            'active_learning_loop=genedisco.apps.active_learning_loop:main',
+            'plot_results=genedisco.apps.plot_results:main'
         ],
     },
     classifiers=[

@@ -38,9 +38,10 @@ def softmax_temperature(x, temperature=1):
         y = np.array(x)
     else:
         y = x
-    y = np.exp(y / temperature)
-    out_np = scipy.special.softmax(y)
-    if any(np.isnan(out_np)):
+    # exp(x/T) / sum(exp(x/T)). Exponentiating before the softmax underflows to a
+    # near one-hot distribution and breaks sampling without replacement.
+    out_np = scipy.special.softmax(y / temperature)
+    if np.any(np.isnan(out_np)):
         raise ValueError("Temperature is too extreme.")
     if isinstance(x, list):
         return [out_item for out_item in out_np]

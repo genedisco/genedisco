@@ -17,10 +17,12 @@ import os
 import sys
 import pickle
 import inspect
+import json
 import numpy as np
 import slingpy as sp
 import importlib.util
 from slingpy.utils.path_tools import PathTools
+from slingpy.utils.logging import warn
 from typing import AnyStr, Dict, List, Optional
 from slingpy import AbstractMetric, AbstractBaseModel, AbstractDataSource
 from genedisco.evaluation.evaluator import save_top_movers
@@ -51,6 +53,7 @@ class ActiveLearningLoop(sp.AbstractBaseApplication):
         model_name: AnyStr = "randomforest",
         acquisition_function_name: AnyStr = "random",
         acquisition_function_path: AnyStr = "custom",
+        acquisition_function_kwargs: AnyStr = "",
         acquisition_batch_size: int = 32,
         num_active_learning_cycles: int = 10,
         feature_set_name: AnyStr = SingleCycleApplication.FEATURE_SET_NAMES[0],
@@ -70,10 +73,17 @@ class ActiveLearningLoop(sp.AbstractBaseApplication):
     ):
         self.acquisition_function_name = acquisition_function_name
         self.acquisition_function_path = acquisition_function_path
+        # JSON string of constructor kwargs, forwarded only to a "custom"
+        # acquisition function (slingpy's CLI parses primitives only).
+        self.acquisition_function_kwargs = acquisition_function_kwargs
         PathTools.mkdir_if_not_exists(output_directory)
+        # Must exist before any loader downloads into it: slingpy's download_streamed
+        # opens its lock file without creating the parent directory.
+        PathTools.mkdir_if_not_exists(cache_directory)
         self.acquisition_function = ActiveLearningLoop.get_acquisition_function(
             self.acquisition_function_name,
-            self.acquisition_function_path
+            self.acquisition_function_path,
+            self.acquisition_function_kwargs
         )
         self.acquisition_batch_size = acquisition_batch_size
         self.num_active_learning_cycles = num_active_learning_cycles
@@ -118,9 +128,32 @@ class ActiveLearningLoop(sp.AbstractBaseApplication):
     
     
     @staticmethod
+    def _parse_acquisition_function_kwargs(acquisition_function_kwargs):
+        """Decode the CLI's JSON kwargs string into a dict (empty/blank -> {}).
+
+        Kwargs come in as JSON because slingpy's CLI only parses primitives.
+        """
+        if acquisition_function_kwargs is None or str(acquisition_function_kwargs).strip() == "":
+            return {}
+        try:
+            parsed = json.loads(acquisition_function_kwargs)
+        except (ValueError, TypeError) as error:
+            raise ValueError(
+                f"acquisition_function_kwargs must be a valid JSON object string; "
+                f"got {acquisition_function_kwargs!r} ({error})."
+            )
+        if not isinstance(parsed, dict):
+            raise ValueError(
+                f"acquisition_function_kwargs must decode to a JSON object (dict); "
+                f"got {type(parsed).__name__}."
+            )
+        return parsed
+
+    @staticmethod
     def get_acquisition_function(
             acquisition_function_name: AnyStr,
-            acquisition_function_path: AnyStr
+            acquisition_function_path: AnyStr,
+            acquisition_function_kwargs: AnyStr = ""
     ) -> BaseBatchAcquisitionFunction:
         if acquisition_function_name == "random":
             return RandomBatchAcquisitionFunction()
@@ -142,7 +175,8 @@ class ActiveLearningLoop(sp.AbstractBaseApplication):
             return AdversarialBIM()
         elif acquisition_function_name == "custom":
             acqfunc_class = ActiveLearningLoop.get_if_valid_acquisition_function_file(acquisition_function_path)
-            return acqfunc_class()
+            custom_kwargs = ActiveLearningLoop._parse_acquisition_function_kwargs(acquisition_function_kwargs)
+            return acqfunc_class(**custom_kwargs)
         else:
             raise NotImplementedError()
 
@@ -262,7 +296,17 @@ class ActiveLearningLoop(sp.AbstractBaseApplication):
             )
             cumulative_indices.extend(last_selected_indices)
             cumulative_indices = list(set(cumulative_indices))
-            assert len(last_selected_indices) == self.acquisition_batch_size
+            n_selected = len(last_selected_indices)
+            assert n_selected <= self.acquisition_batch_size, (
+                f"Acquisition function returned {n_selected} indices, exceeding the "
+                f"requested acquisition_batch_size {self.acquisition_batch_size}."
+            )
+            if n_selected < self.acquisition_batch_size:
+                warn(
+                    f"Acquisition function returned {n_selected} indices, fewer than the "
+                    f"requested acquisition_batch_size {self.acquisition_batch_size}. "
+                    f"This is expected only when the available pool is nearly depleted."
+                )
 
         results_path = os.path.join(self.output_directory, "results.pickle")
         with open(results_path, "wb") as fp:
